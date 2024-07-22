@@ -1,13 +1,23 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param } from '@nestjs/common';
 import { QuotesService } from './quotes.service';
-import { Quote } from './quote.schema';
+import { Quote } from './quote.model';
 
 @Controller('quotes')
 export class QuotesController {
-  constructor(private quotesService: QuotesService) {}
+  constructor(private readonly quotesService: QuotesService) {}
 
-  @Get('random')
-  async getRandomQuote(): Promise<Quote | null> {
-    return this.quotesService.getRandomQuote();
+  @Get()
+  getAllQuotes(): Quote[] {
+    return this.quotesService.getAllQuotes();
+  }
+
+  @Get(':id')
+  getQuoteById(@Param('id') id: number): Quote | undefined {
+    return this.quotesService.getQuoteById(id);
+  }
+
+  @Post()
+  addQuote(@Body() quote: Quote) {
+    this.quotesService.addQuote(quote);
   }
 }
