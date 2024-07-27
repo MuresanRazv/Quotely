@@ -1,0 +1,63 @@
+# All the services needed for the application are defined here
+services:
+  frontend:
+    build:
+      context: ./client
+      target: dev
+    # avoid 'stale' status, force restart
+    restart: always
+    # port forwarding to have access from host
+    ports:
+      - "3000:3000"
+    # env variables
+    environment:
+      REACT_APP_BACKEND_API: http://localhost:3030
+    # frontend should connect only to frontend network, which backend service also has access to
+    networks:
+      - frontend
+    # this service depends on backend, so if backend fails, front end will not start 
+    depends_on:
+      - backend
+    # use bind mount for hot reload
+    volumes:
+      - type: bind
+        source: ./frontend
+        target: /app
+
+  backend:
+    build:
+      context: ./api
+    restart: always
+    ports:
+      - "3030:3030"
+    # has access to both networks as it interacts with all other services
+    networks:
+      - backend
+      - frontend
+    environment:
+      MONGODB_URI: mongodb://db:27017/users
+    depends_on:
+      - db
+    volumes:
+      - api-volume:/app
+    
+  db:
+    image: mongo:latest
+    restart: always
+    expose:
+      - 27017
+    volumes:
+      - mongo_data:/data/db
+    # has access only to backend network as only the backend service should interact with the database
+    networks:
+      - backend
+
+# define networks
+networks:
+  backend: {}
+  frontend: {}
+
+# define volumes
+volumes:
+  mongo_data: {}
+  api-volume: {}

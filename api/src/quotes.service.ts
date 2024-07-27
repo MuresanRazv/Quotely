@@ -1,48 +1,33 @@
 import { Injectable } from '@nestjs/common';
-import { Quote } from './quote.model';
-import * as fs from 'fs';
-
-const quotesFile = 'quotes.json';
-
-// Quotes are stored in a json file and data is easily persisted by creating a named volume using -v command when creating a container
-// By specifying the name of the volume like so: "name:/path" we create a named volume
-// Excluding the name part, we create an unnamed volume (harder to persist data since you need to search for its path in the system)
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { Quote, QuoteDocument } from './quote.schema';
 
 @Injectable()
 export class QuotesService {
-  private quotes: Quote[] = [];
+  constructor(@InjectModel(Quote.name) private quoteModel: Model<QuoteDocument>) {
+    // Initial quotes
+    const initialQuotes = [
+      { text: 'The only way to do great work is to love what you do.', author: 'Steve Jobs' },
+      { text: 'In the middle of difficulty lies opportunity.', author: 'Albert Einstein' },
+      { text: 'The future belongs to those who believe in the beauty of their dreams.',  author: 'Eleanor Roosevelt' }
+    ];
 
-  constructor() {
-    this.loadQuotes();
+    // Insert initial quotes if the collection is empty
+    this.quoteModel.countDocuments().then(count => {
+      if (count === 0) {
+        this.quoteModel.insertMany(initialQuotes);
+      }
+    });
   }
 
-  private loadQuotes() {
-    try {
-      const data = fs.readFileSync(quotesFile, 'utf8');
-      this.quotes = JSON.parse(data);
-    } catch (err) {
-      // handle error (e.g., create empty file)
-      console.error('Error loading quotes:', err);
-      this.quotes = [];
-    }
+  async findAll(): Promise<Quote[]> {
+    return this.quoteModel.find().exec();
   }
 
-  private saveQuotes() {
-    fs.writeFileSync(quotesFile, JSON.stringify(this.quotes, null, 2));
-  }
-
-  getAllQuotes(): Quote[] {
-    return this.quotes;
-  }
-
-  getQuoteById(id: number): Quote | undefined {
-    return this.quotes.find((quote) => quote.id === id);
-  }
-
-  addQuote(quote: Quote) {
-    const newId = this.quotes.length ? Math.max(...this.quotes.map((q) => q.id)) + 1 : 1;
-    quote.id = newId;
-    this.quotes.push(quote);
-    this.saveQuotes();
+  async getRandomQuote(): Promise<Quote> {
+    const count = await this.quoteModel.countDocuments();
+    const random = Math.floor(Math.random() * count);
+    return this.quoteModel.findOne().skip(random).exec();
   }
 }
